@@ -4,14 +4,11 @@ WORKDIR /usr/codebase
 
 COPY ./Cargo.toml ./Cargo.toml
 
-RUN sed -i 's#src/main.rs#fake.rs#' Cargo.toml
-
-RUN echo "fn main() {}" > fake.rs
-
-RUN cargo build --release
-RUN rm fake.rs
-
-RUN sed -i 's#fake.rs#src/main.rs#' Cargo.toml
+RUN sed -i 's#src/main.rs#fake.rs#' Cargo.toml && \
+    echo "fn main() {}" > fake.rs && \
+    cargo build --release && \
+    rm fake.rs && \
+    sed -i 's#fake.rs#src/main.rs#' Cargo.toml
 
 COPY ./ ./
 
