@@ -6,6 +6,8 @@ use serde::Serialize;
 use std::{net::SocketAddr, time::Duration};
 use tokio::sync::mpsc::Sender;
 use tower::{BoxError, ServiceBuilder};
+use tower_http::trace::{self, TraceLayer};
+use tracing::Level;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 use uuid::Uuid;
 
@@ -41,6 +43,7 @@ async fn main() {
 
     // Compose the routes
     let app = Router::new()
+        .route("/v2/publish/*url", post(publish))
         .route("/v1/publish/*url", post(publish))
         // Add middleware to all routes
         .layer(
@@ -58,7 +61,14 @@ async fn main() {
                 .timeout(Duration::from_secs(10))
                 .into_inner(),
         )
+        .layer(
+            TraceLayer::new_for_http()
+                .make_span_with(trace::DefaultMakeSpan::new().level(Level::INFO))
+                .on_response(trace::DefaultOnResponse::new().level(Level::INFO)),
+        )
         .with_state(tx);
+
+    let app = app.fallback(handler_404);
 
     let addr = SocketAddr::from(([127, 0, 0, 1], 3033));
     tracing::debug!("listening on {}", addr);
@@ -75,6 +85,7 @@ async fn publish(
 ) -> impl IntoResponse {
     // print the request uri without v1/publish
     let target = uri.as_str().replace("/v1/publish/", "");
+    let target = target.replace("/v2/publish/", "");
 
     tx.send((target, body)).await.unwrap();
 
@@ -90,4 +101,8 @@ async fn publish(
 struct Message {
     #[serde(rename(serialize = "messageId"))]
     message_id: String,
+}
+
+async fn handler_404() -> impl IntoResponse {
+    (StatusCode::NOT_FOUND, "nothing to see here")
 }
