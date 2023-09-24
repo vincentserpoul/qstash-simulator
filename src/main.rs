@@ -84,8 +84,8 @@ async fn publish(
     body: String,
 ) -> impl IntoResponse {
     // print the request uri without v1/publish
-    let target = uri.as_str().replace("/v1/publish/", "");
-    let target = target.replace("/v2/publish/", "");
+    let target = uri.as_str().replace("v1/publish/", "");
+    let target = target.replace("v2/publish/", "");
 
     tx.send((target, body)).await.unwrap();
 
