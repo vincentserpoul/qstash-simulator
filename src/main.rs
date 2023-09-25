@@ -3,6 +3,7 @@ use axum::{
     routing::post, Json, Router,
 };
 use serde::Serialize;
+use std::env;
 use std::{net::SocketAddr, time::Duration};
 use tokio::sync::mpsc::Sender;
 use tower::{BoxError, ServiceBuilder};
@@ -11,8 +12,27 @@ use tracing::Level;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 use uuid::Uuid;
 
+#[derive(Clone)]
+struct AppState {
+    tx: Sender<(String, String)>,
+    in_container: bool,
+}
+
 #[tokio::main]
 async fn main() {
+    // init env
+    let in_container = if env::var("IN_CONTAINER").is_ok() {
+        true
+    } else {
+        false
+    };
+    let port: u16 = if let Ok(p) = env::var("PORT") {
+        p.parse().unwrap()
+    } else {
+        3033
+    };
+
+    // init tracing
     tracing_subscriber::registry()
         .with(
             tracing_subscriber::EnvFilter::try_from_default_env()
@@ -22,6 +42,11 @@ async fn main() {
         .init();
 
     let (tx, mut rx) = tokio::sync::mpsc::channel(100);
+
+    let state = AppState {
+        tx: tx,
+        in_container,
+    };
 
     tokio::spawn(async move {
         while let Some((target, body)) = rx.recv().await {
@@ -58,7 +83,7 @@ async fn main() {
                         ))
                     }
                 }))
-                .timeout(Duration::from_secs(10))
+                .timeout(Duration::from_secs(1))
                 .into_inner(),
         )
         .layer(
@@ -66,12 +91,12 @@ async fn main() {
                 .make_span_with(trace::DefaultMakeSpan::new().level(Level::INFO))
                 .on_response(trace::DefaultOnResponse::new().level(Level::INFO)),
         )
-        .with_state(tx);
+        .with_state(state);
 
     let app = app.fallback(handler_404);
 
-    let addr = SocketAddr::from(([127, 0, 0, 1], 3033));
-    tracing::debug!("listening on {}", addr);
+    let addr = SocketAddr::from(([127, 0, 0, 1], port));
+    tracing::debug!("listening on {}, in container: {}", addr, in_container);
     axum::Server::bind(&addr)
         .serve(app.into_make_service())
         .await
@@ -79,15 +104,19 @@ async fn main() {
 }
 
 async fn publish(
-    State(tx): State<Sender<(String, String)>>,
+    State(state): State<AppState>,
     uri: axum::extract::Path<String>,
     body: String,
 ) -> impl IntoResponse {
     // print the request uri without v1/publish
     let target = uri.as_str().replace("v1/publish/", "");
-    let target = target.replace("v2/publish/", "");
+    let mut target = target.replace("v2/publish/", "");
 
-    tx.send((target, body)).await.unwrap();
+    if state.in_container {
+        target = target.replace("localhost", "host.docker.internal");
+    }
+
+    state.tx.send((target, body)).await.unwrap();
 
     (
         StatusCode::CREATED,
