@@ -21,11 +21,7 @@ struct AppState {
 #[tokio::main]
 async fn main() {
     // init env
-    let in_container = if env::var("IN_CONTAINER").is_ok() {
-        true
-    } else {
-        false
-    };
+    let in_container = env::var("IN_CONTAINER").is_ok();
     let port: u16 = if let Ok(p) = env::var("PORT") {
         p.parse().unwrap()
     } else {
@@ -43,10 +39,7 @@ async fn main() {
 
     let (tx, mut rx) = tokio::sync::mpsc::channel(100);
 
-    let state = AppState {
-        tx: tx,
-        in_container,
-    };
+    let state = AppState { tx, in_container };
 
     tokio::spawn(async move {
         while let Some((target, body)) = rx.recv().await {
@@ -97,8 +90,8 @@ async fn main() {
 
     let addr = SocketAddr::from(([0, 0, 0, 0], port));
     tracing::debug!("listening on {}, in container: {}", addr, in_container);
-    axum::Server::bind(&addr)
-        .serve(app.into_make_service())
+    let listener = tokio::net::TcpListener::bind(&addr).await.unwrap();
+    axum::serve(listener, app.into_make_service())
         .await
         .unwrap();
 }

@@ -1,6 +1,6 @@
 [package]
 name = "qstash-simulator"
-version = "2.0.12"
+version = "2.0.13"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -9,14 +9,25 @@ edition = "2021"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 tokio = { version = "1.32.0", features = ["full"] }
-axum = { version = "0.6.20" }
+axum = { version = "0.7.1" }
 tower = { version = "0.4", features = ["util", "timeout"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 uuid = { version = "1.4", features = ["serde", "v4"] }
 reqwest = { version = "0.11", features = ["json"] }
-tower-http = { version = "0.4", features = ["trace"] }
+tower-http = { version = "0.5", features = ["trace"] }
 
 [[bin]]
 name = "qstash-simulator"
 path = "src/main.rs"
+
+[lints.rust]
+unsafe_code = "forbid"
+
+[lints.clippy]
+missing_docs_in_private_items = "allow"
+cargo_common_metadata = "allow"
+missing_errors_doc = "allow"
+all = "warn"
+pedantic = "allow"
+cargo = "allow"
