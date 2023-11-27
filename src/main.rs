@@ -89,7 +89,7 @@ async fn main() {
     let app = app.fallback(handler_404);
 
     let addr = SocketAddr::from(([0, 0, 0, 0], port));
-    tracing::debug!("listening on {}, in container: {}", addr, in_container);
+    tracing::info!("listening on {}, in container: {}", addr, in_container);
     let listener = tokio::net::TcpListener::bind(&addr).await.unwrap();
     axum::serve(listener, app.into_make_service())
         .await

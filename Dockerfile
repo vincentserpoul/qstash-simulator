@@ -15,7 +15,7 @@ COPY ./ ./
 RUN cargo build --bin qstash-simulator --release
 
 #
-FROM gcr.io/distroless/cc-debian11
+FROM gcr.io/distroless/cc-debian12:nonroot
 
 COPY --from=builder /usr/codebase/target/release/qstash-simulator /app/
 
