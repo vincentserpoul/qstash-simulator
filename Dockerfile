@@ -2,17 +2,11 @@ FROM rust:1.74.0 as builder
 
 WORKDIR /usr/codebase
 
-# Create a blank project
-RUN cargo init
+COPY . .
 
-# Copy only the dependencies
-COPY ./Cargo.toml ./Cargo.lock ./
-
-RUN cargo build --bin qstash-simulator --release
-
-COPY ./ ./
-
-RUN cargo build --bin qstash-simulator --release
+RUN --mount=type=cache,target=/usr/local/cargo/registry \
+    --mount=type=cache,target=/home/root/app/target \
+    cargo build --release
 
 #
 FROM gcr.io/distroless/cc-debian12:nonroot
