@@ -1,17 +1,18 @@
 FROM rust:1.74.0 as builder
 
-WORKDIR /usr/codebase
+WORKDIR /root
 
 COPY . .
 
-RUN --mount=type=cache,target=/usr/local/cargo/registry \
-    --mount=type=cache,target=/home/root/app/target \
-    cargo build --release
+RUN --mount=type=cache,target=/usr/local/cargo/registry,id=${TARGETPLATFORM} \
+    --mount=type=cache,target=/root/target,id=${TARGETPLATFORM} \
+    cargo build --release && \
+    mv /root/target/release/qstash-simulator /root
 
 #
 FROM gcr.io/distroless/cc-debian12:nonroot
 
-COPY --from=builder /usr/codebase/target/release/qstash-simulator /app/
+COPY --from=builder /root/qstash-simulator /app/
 
 WORKDIR /app
 
