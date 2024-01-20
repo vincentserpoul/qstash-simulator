@@ -31,3 +31,10 @@ missing_errors_doc = "allow"
 all = "warn"
 pedantic = "allow"
 cargo = "allow"
+
+[profile.release]
+opt-level = 'z'
+lto = true
+codegen-units = 1
+panic = 'abort'
+strip = 'symbols'
